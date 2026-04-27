@@ -1,0 +1,864 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>⚔️ LEGENDARY QUEST | GOD OF RPG ⚔️</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+        html { font-size: 16px; }
+        @media (max-width: 768px) { 
+            html { font-size: 14px; } 
+            .player-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+            .achievements-grid { grid-template-columns: 1fr !important; }
+            .profile-header { flex-direction: column; text-align: center; }
+            .skins-grid { grid-template-columns: 1fr !important; }
+            .shop-grid { grid-template-columns: 1fr !important; }
+            .dialog-box { width: 90% !important; font-size: 0.8rem !important; }
+        }
+        @media (max-width: 480px) { 
+            html { font-size: 12px; } 
+            .header-stats { flex-direction: column; align-items: stretch; }
+            .stat-badge { justify-content: center; }
+            .action-btn { padding: 0.5rem; font-size: 0.7rem; }
+            .center-damage { font-size: 2rem; }
+            .cutscene-boss-emoji { font-size: 3rem; }
+        }
+        body { background: linear-gradient(135deg, #0a0a2a, #1a1a3a); font-family: 'Orbitron', monospace; min-height: 100vh; padding: 0.75rem; position: relative; overflow-x: hidden; }
+        
+        /* БЕЛЫЙ ШРИФТ ВЕЗДЕ */
+        body, .stat-badge, .stat-value, .enemy-name, .player-name-display, .achievement-name, 
+        .achievement-desc, .skin-name, .merchant-text, .nav-btn, .equip-slot, .shop-item-name,
+        .shop-item-price, .skin-price, .owned-badge, .death-subtext, .cutscene-content,
+        .cutscene-boss-name, .cutscene-subtitle, .toast, .combo-counter, .center-damage, .center-crit,
+        .dialog-text, .dialog-player-text, .dialog-enemy-text {
+            color: #ffffff !important;
+        }
+        
+        .stat-value, .stat-badge, .enemy-name, .player-name-display {
+            text-shadow: 0 0 5px rgba(255,255,255,0.5), 0 0 10px rgba(0,150,255,0.3);
+        }
+        
+        .particle-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .particle { position: absolute; background: radial-gradient(circle, rgba(0,150,255,0.6), transparent); border-radius: 50%; animation: floatParticle linear infinite; }
+        @keyframes floatParticle { 0% { transform: translateY(100vh) translateX(0); opacity: 0; } 20% { opacity: 0.8; } 80% { opacity: 0.8; } 100% { transform: translateY(-20vh) translateX(calc(100px * var(--dir))); opacity: 0; } }
+        
+        /* ДИАЛОГОВОЕ ОКНО */
+        .dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 7000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: dialogFadeIn 0.3s;
+        }
+        @keyframes dialogFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .dialog-box {
+            background: linear-gradient(135deg, #1a1a3a, #2a2a4a);
+            border: 2px solid #00aaff;
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            max-width: 400px;
+            width: 80%;
+            text-align: center;
+            animation: dialogPop 0.3s ease-out;
+            box-shadow: 0 0 40px rgba(0,150,255,0.5);
+        }
+        @keyframes dialogPop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .dialog-enemy {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .dialog-enemy-emoji { font-size: 3rem; animation: dialogShake 0.5s ease; }
+        @keyframes dialogShake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        .dialog-enemy-text { font-size: 1rem; font-weight: bold; background: rgba(0,0,0,0.5); padding: 0.5rem 1rem; border-radius: 1rem; display: inline-block; }
+        .dialog-player {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(0,150,255,0.3);
+        }
+        .dialog-player-emoji { font-size: 2.5rem; }
+        .dialog-player-text { font-size: 1rem; font-weight: bold; background: rgba(0,0,0,0.5); padding: 0.5rem 1rem; border-radius: 1rem; }
+        .dialog-btn {
+            margin-top: 1.5rem;
+            background: linear-gradient(135deg, #00aaff, #0088cc);
+            border: none;
+            padding: 0.6rem 1.5rem;
+            border-radius: 2rem;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: 'Orbitron', monospace;
+            transition: all 0.3s;
+        }
+        .dialog-btn:hover { transform: scale(1.05); box-shadow: 0 0 20px #00aaff; }
+        
+        .loader-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0a0a2a, #1a1a4a); z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s ease; }
+        .loader-logo { font-size: clamp(1.5rem, 8vw, 3rem); font-weight: 900; color: #fff; text-shadow: 0 0 20px #00aaff, 0 0 40px #0088cc; margin-bottom: 1.5rem; animation: pulse 1.5s ease infinite; text-align: center; }
+        @keyframes pulse { 0%,100% { transform: scale(1); text-shadow: 0 0 20px #00aaff; } 50% { transform: scale(1.05); text-shadow: 0 0 40px #00aaff; } }
+        .loader-bar-container { width: 80%; max-width: 300px; height: 8px; background: rgba(255,255,255,0.2); border-radius: 10px; overflow: hidden; margin-bottom: 1rem; }
+        .loader-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #00aaff, #00ffcc); border-radius: 10px; transition: width 0.3s; }
+        .loader-text { color: #fff; font-size: 0.875rem; letter-spacing: 2px; margin-bottom: 1rem; }
+        .loader-dots { display: flex; gap: 0.625rem; }
+        .loader-dot { width: 10px; height: 10px; background: #00aaff; border-radius: 50%; animation: dotPulse 1s ease infinite; }
+        @keyframes dotPulse { 0%,100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
+        
+        .game-container { max-width: 900px; margin: 0 auto; position: relative; z-index: 10; opacity: 0; transition: opacity 1s ease; }
+        .game-card { background: rgba(5,10,25,0.85); backdrop-filter: blur(20px); border-radius: 1.5rem; border: 1px solid rgba(0,200,255,0.6); box-shadow: 0 20px 40px rgba(0,0,0,0.5); overflow: hidden; margin-bottom: 0.75rem; transition: all 0.4s; }
+        .game-card:hover { transform: translateY(-5px); border-color: rgba(0,200,255,0.9); box-shadow: 0 0 40px rgba(0,150,255,0.3); }
+        .header-stats { background: linear-gradient(135deg, rgba(10,15,35,0.95), rgba(5,10,25,0.95)); padding: 0.75rem 1rem; border-bottom: 2px solid #00aaff; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+        .stat-badge { background: rgba(0,0,0,0.6); border-radius: 50px; padding: 0.5rem 1rem; display: inline-flex; align-items: center; gap: 0.5rem; border: 1px solid #00aaff; font-weight: bold; font-size: 0.8125rem; }
+        
+        .profile-header { display: flex; align-items: center; gap: 1.25rem; padding: 1.25rem; background: linear-gradient(135deg, rgba(0,50,100,0.4), rgba(0,20,50,0.3)); border-radius: 1.5rem; margin-bottom: 0.9375rem; flex-wrap: wrap; }
+        .avatar { width: clamp(70px, 18vw, 100px); height: clamp(70px, 18vw, 100px); border-radius: 50%; background: linear-gradient(135deg, #00aaff, #0088cc); display: flex; align-items: center; justify-content: center; font-size: 3rem; box-shadow: 0 0 20px rgba(0,150,255,0.5); transition: all 0.3s; animation: avatarGlow 2s ease infinite; }
+        @keyframes avatarGlow { 0%,100% { box-shadow: 0 0 20px rgba(0,150,255,0.5); } 50% { box-shadow: 0 0 40px rgba(0,150,255,0.8); } }
+        .player-name-input { background: rgba(0,0,0,0.5); border: 1px solid #00aaff; border-radius: 50px; padding: 0.5rem 1rem; color: #fff; font-family: 'Orbitron', monospace; font-size: 0.875rem; width: 100%; max-width: 250px; outline: none; }
+        .player-name-input:focus { border-color: #ffd700; box-shadow: 0 0 10px #ffd700; }
+        .error-message { color: #ff6666; font-size: 0.75rem; margin-top: 0.3rem; }
+        
+        .enemy-card { background: linear-gradient(135deg, rgba(30,20,50,0.95), rgba(20,15,40,0.95)); border-radius: 1.5rem; padding: 1.25rem; text-align: center; border: 2px solid #ff4444; box-shadow: 0 0 40px rgba(255,68,68,0.4); transition: all 0.3s; }
+        .enemy-name { font-size: clamp(1.2rem, 6vw, 1.6rem); font-weight: 900; text-shadow: 0 0 20px #ff4444; }
+        .enemy-emoji { font-size: clamp(3rem, 15vw, 5rem); filter: drop-shadow(0 0 25px rgba(255,68,68,0.6)); margin: 0.625rem 0; animation: enemyFloat 3s ease-in-out infinite; transition: all 0.3s; }
+        @keyframes enemyFloat { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+        
+        .enemy-hit { animation: enemyHitAnim 0.2s ease-in-out; }
+        .enemy-death-animation { animation: enemyDeathAnim 0.5s ease-out forwards; }
+        @keyframes enemyHitAnim { 0%,100% { transform: translateX(0); filter: brightness(1); } 25% { transform: translateX(-10px); filter: brightness(1.5); } 75% { transform: translateX(10px); filter: brightness(1.5); } }
+        @keyframes enemyDeathAnim { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); filter: brightness(1.5); } 100% { transform: scale(0); opacity: 0; } }
+        
+        .hp-bar-container { background: #1a1a1a; border-radius: 30px; height: 1.5rem; overflow: hidden; margin: 0.625rem 0; }
+        .hp-bar-fill { background: linear-gradient(90deg, #ff2222, #ff6666); background-size: 200% 100%; animation: hpPulse 1.5s ease infinite; width: 100%; height: 100%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold; color: white; }
+        .hp-bar-fill.player { background: linear-gradient(90deg, #22ff22, #66ff66); }
+        @keyframes hpPulse { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        
+        .player-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; background: rgba(0,0,0,0.4); border-radius: 1.5rem; padding: 1rem; }
+        .stat-item { text-align: center; background: linear-gradient(135deg, rgba(0,50,100,0.4), rgba(0,20,50,0.3)); border-radius: 1.25rem; padding: 0.75rem; border: 1px solid rgba(0,150,255,0.3); transition: all 0.3s; cursor: pointer; }
+        .stat-item:hover { transform: translateY(-3px) scale(1.05); border-color: #00aaff; box-shadow: 0 0 15px rgba(0,150,255,0.3); }
+        .stat-value { font-size: clamp(1rem, 5vw, 1.5rem); font-weight: 900; }
+        .stat-label { font-size: 0.65rem; color: rgba(255,255,255,0.8); margin-top: 0.3125rem; }
+        
+        .action-btn { border: none; padding: 0.75rem; border-radius: 3rem; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; font-family: 'Orbitron', monospace; color: white; transition: all 0.2s; cursor: pointer; position: relative; overflow: hidden; }
+        .action-btn:active { transform: scale(0.97); }
+        .action-btn::before { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; border-radius: 50%; background: rgba(255,255,255,0.3); transform: translate(-50%, -50%); transition: width 0.5s, height 0.5s; }
+        .action-btn:active::before { width: 200%; height: 200%; }
+        .btn-attack { background: linear-gradient(135deg, #ff4757, #ff6b81); box-shadow: 0 4px 15px rgba(255,71,87,0.4); }
+        .btn-heavy { background: linear-gradient(135deg, #ffa502, #ff6348); box-shadow: 0 4px 15px rgba(255,165,2,0.4); }
+        .btn-defend { background: linear-gradient(135deg, #1e90ff, #00bfff); box-shadow: 0 4px 15px rgba(30,144,255,0.4); }
+        .btn-heal { background: linear-gradient(135deg, #2ed573, #00d68f); box-shadow: 0 4px 15px rgba(46,213,115,0.4); }
+        .btn-run { background: linear-gradient(135deg, #747d8c, #a4b0be); box-shadow: 0 4px 15px rgba(116,125,140,0.4); }
+        .action-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+        
+        .equipment-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; background: rgba(0,0,0,0.3); border-radius: 1.5rem; padding: 0.9rem; }
+        .equip-slot { background: linear-gradient(135deg, rgba(0,50,100,0.5), rgba(0,20,50,0.3)); border-radius: 1.25rem; padding: 0.75rem; text-align: center; font-size: 0.75rem; border: 1px solid rgba(0,150,255,0.4); transition: all 0.3s; }
+        .equip-slot:hover { border-color: #00aaff; transform: scale(1.03); }
+        .equip-emoji { font-size: 1.8rem; display: block; margin-bottom: 0.5rem; }
+        
+        .skins-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; max-height: 350px; overflow-y: auto; padding: 0.3rem; }
+        .skin-item { background: linear-gradient(135deg, #1a1a3a, #2a2a4a); border-radius: 1.25rem; padding: 0.9rem; text-align: center; cursor: pointer; transition: all 0.3s; border: 1px solid #ffd700; }
+        .skin-item:hover { transform: translateY(-3px); box-shadow: 0 0 20px #ffd700; }
+        .skin-avatar { font-size: 2.5rem; display: block; margin-bottom: 0.5rem; }
+        .skin-name { font-size: 0.875rem; font-weight: bold; margin-bottom: 0.3rem; }
+        .skin-price { font-size: 0.75rem; color: #ffd700; }
+        .owned-badge { color: #00ff00; font-size: 0.7rem; margin-top: 0.3rem; }
+        .shop-timer { background: linear-gradient(135deg, #ffa502, #ff6348); border-radius: 30px; padding: 0.4rem 1rem; color: #fff; font-weight: bold; font-family: monospace; font-size: 0.9rem; }
+        
+        .shop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+        .merchant-card { background: linear-gradient(135deg, rgba(0,50,100,0.6), rgba(0,20,50,0.4)); border-radius: 1rem; padding: 0.8rem; display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1rem; flex-wrap: wrap; }
+        .merchant-emoji { font-size: 2.5rem; animation: bounce 2s ease infinite; }
+        @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        .merchant-text { font-size: 0.8rem; flex: 1; }
+        .shop-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; max-height: 350px; overflow-y: auto; padding: 0.3rem; }
+        .shop-item { background: linear-gradient(135deg, #1a1a3a, #2a2a4a); border-radius: 1rem; padding: 0.8rem; text-align: center; cursor: pointer; transition: all 0.3s; border: 1px solid #00aaff; }
+        .shop-item:hover { transform: translateY(-3px); box-shadow: 0 0 20px #00aaff; }
+        .shop-item-emoji { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
+        .shop-item-name { font-size: 0.8rem; font-weight: bold; }
+        .shop-item-price { font-size: 0.7rem; margin-top: 0.3rem; color: #ffd700; }
+        
+        .achievements-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+        .achievements-stats { background: rgba(0,0,0,0.5); border-radius: 1rem; padding: 0.5rem 1rem; }
+        .achievements-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; max-height: 500px; overflow-y: auto; padding: 0.3rem; }
+        .achievement-card { background: linear-gradient(135deg, #1a1a3a, #2a2a4a); border-radius: 1rem; padding: 0.8rem; transition: all 0.3s; border: 1px solid rgba(0,150,255,0.4); opacity: 0.6; cursor: pointer; }
+        .achievement-card.unlocked { opacity: 1; border: 2px solid #ffd700; background: linear-gradient(135deg, #2a2a5a, #3a3a7a); }
+        .achievement-card:hover { transform: translateY(-3px); box-shadow: 0 0 15px #00aaff; }
+        .achievement-icon { font-size: 2rem; display: block; margin-bottom: 0.5rem; text-align: center; }
+        .achievement-name { font-size: 0.85rem; font-weight: bold; margin-bottom: 0.3rem; text-align: center; }
+        .achievement-desc { font-size: 0.7rem; text-align: center; opacity: 0.9; }
+        
+        .nav-tabs { display: flex; gap: 0.5rem; margin-top: 0.8rem; flex-wrap: wrap; }
+        .nav-btn { flex: 1; background: rgba(0,0,0,0.7); border: 1px solid #00aaff; border-radius: 2rem; padding: 0.7rem; text-align: center; cursor: pointer; font-weight: bold; font-size: 0.8rem; transition: all 0.3s; min-width: 70px; }
+        .nav-btn.active { background: linear-gradient(135deg, #00aaff, #0088cc); box-shadow: 0 0 15px #00aaff; }
+        .nav-btn:hover { transform: scale(1.02); }
+        
+        .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #1a1a3a, #2a2a4a); border: 2px solid #00aaff; padding: 0.7rem 1.2rem; border-radius: 2rem; z-index: 1000; animation: fadeInUp 0.3s, fadeOut 0.3s 2.5s forwards; font-weight: bold; font-size: 0.8rem; white-space: nowrap; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateX(-50%) translateY(30px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
+        
+        .center-damage { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3.5rem; font-weight: 900; pointer-events: none; z-index: 2000; animation: damageFloat 0.8s ease-out forwards; text-shadow: 0 0 30px #ff0000; }
+        @keyframes damageFloat { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -80%) scale(0.8); } }
+        .center-crit { position: fixed; top: 45%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5rem; font-weight: 900; pointer-events: none; z-index: 2001; animation: critFloat 1s ease-out forwards; text-shadow: 0 0 30px #ffaa00; }
+        @keyframes critFloat { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); } 100% { opacity: 0; transform: translate(-50%, -80%) scale(0.8); } }
+        .combo-counter { position: fixed; top: 35%; left: 50%; transform: translateX(-50%); font-size: 2.5rem; font-weight: 900; color: #ffaa00; text-shadow: 0 0 30px #ffaa00; z-index: 1500; pointer-events: none; animation: comboPopup 0.5s ease-out; white-space: nowrap; }
+        @keyframes comboPopup { 0% { opacity: 0; transform: translateX(-50%) scale(0.3); } 50% { opacity: 1; transform: translateX(-50%) scale(1.3); } 100% { opacity: 0; transform: translateX(-50%) scale(1); } }
+        
+        .death-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 6000; display: flex; flex-direction: column; justify-content: center; align-items: center; animation: deathFade 0.5s; }
+        @keyframes deathFade { from { opacity: 0; } to { opacity: 1; } }
+        .death-text { font-size: 2.5rem; color: #ff4444; text-shadow: 0 0 30px #ff0000; margin-bottom: 1rem; animation: deathPulse 1s ease infinite; }
+        @keyframes deathPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        .death-subtext { font-size: 1rem; margin-bottom: 1.5rem; }
+        .death-btn { background: #00aaff; border: none; padding: 0.8rem 2rem; border-radius: 2rem; color: white; font-weight: bold; cursor: pointer; font-family: 'Orbitron', monospace; transition: all 0.3s; }
+        .death-btn:hover { transform: scale(1.05); background: #ffd700; color: #000; }
+        
+        .cutscene-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 5000; display: flex; flex-direction: column; justify-content: center; align-items: center; animation: cutsceneFade 0.5s; }
+        @keyframes cutsceneFade { from { opacity: 0; } to { opacity: 1; } }
+        .cutscene-content { text-align: center; font-size: 1.3rem; font-weight: bold; text-shadow: 0 0 20px #ff4444; animation: cutsceneText 0.5s ease; max-width: 90%; }
+        .cutscene-boss-name { font-size: 2rem; color: #ff4444; margin-top: 1rem; letter-spacing: 3px; }
+        .cutscene-boss-emoji { font-size: 5rem; margin: 1rem 0; animation: bossAppear 0.5s ease; }
+        .cutscene-subtitle { font-size: 1rem; color: #00aaff; margin-top: 1rem; animation: pulse 1s infinite; }
+        @keyframes bossAppear { from { transform: scale(0) rotate(-180deg); } to { transform: scale(1) rotate(0); } }
+        @keyframes cutsceneText { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        .panel { display: none; }
+        .panel.active { display: block; }
+        
+        .music-btn { position: fixed; bottom: 20px; right: 20px; z-index: 1000; background: rgba(0,0,0,0.85); border: 2px solid #00aaff; border-radius: 50px; padding: 0.5rem 1rem; color: #00aaff; cursor: pointer; font-family: monospace; backdrop-filter: blur(10px); transition: all 0.3s; font-weight: bold; font-size: 0.8rem; }
+        .music-btn:hover { transform: scale(1.05); }
+        
+        .screen-flash { animation: screenFlash 0.1s ease-in-out; }
+        @keyframes screenFlash { 0% { opacity: 0; } 50% { opacity: 0.3; } 100% { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+<div class="particle-bg" id="particleBg"></div>
+
+<div class="loader-screen" id="loaderScreen">
+    <div class="loader-logo">⚔️ LEGENDARY QUEST ⚔️</div>
+    <div class="loader-bar-container"><div class="loader-bar" id="loaderBar"></div></div>
+    <div class="loader-text" id="loaderText">ЗАГРУЗКА МИРА...</div>
+    <div class="loader-dots"><div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div></div>
+</div>
+
+<div class="game-container" id="gameContainer">
+    <div class="game-card">
+        <div class="header-stats">
+            <div class="stat-badge"><i class="fas fa-crown text-warning"></i> УРОВЕНЬ <span id="level">1</span></div>
+            <div class="stat-badge"><i class="fas fa-coins text-warning"></i> <span id="gold">100</span>💰</div>
+            <div class="stat-badge"><i class="fas fa-dungeon"></i> ЭТАЖ <span id="floor">1</span></div>
+            <div class="stat-badge"><i class="fas fa-star text-warning"></i> <span id="stars">0</span>⭐</div>
+        </div>
+    </div>
+
+    <div id="battlePanel" class="panel active">
+        <div class="game-card">
+            <div style="padding: 1.25rem; text-align: center;">
+                <div class="enemy-card" id="enemyCard">
+                    <div class="enemy-name" id="enemyName">🐺 ВОЛК</div>
+                    <div class="enemy-emoji" id="enemyEmoji">🐺</div>
+                    <div class="hp-bar-container"><div class="hp-bar-fill" id="enemyHpBar" style="width: 100%"><span id="enemyHpText">100%</span></div></div>
+                    <div class="small" id="enemyHpDetail">❤️ HP: 50/50</div>
+                </div>
+                <div class="player-stats-grid">
+                    <div class="stat-item"><div class="stat-value" id="playerHp">100</div><div class="stat-label"><i class="fas fa-heart text-danger"></i> HP</div></div>
+                    <div class="stat-item"><div class="stat-value" id="playerMana">50</div><div class="stat-label"><i class="fas fa-droplet text-info"></i> МАНА</div></div>
+                    <div class="stat-item"><div class="stat-value" id="playerAtk">15</div><div class="stat-label"><i class="fas fa-sword"></i> АТАКА</div></div>
+                    <div class="stat-item"><div class="stat-value" id="playerDef">10</div><div class="stat-label"><i class="fas fa-shield-alt"></i> ЗАЩИТА</div></div>
+                </div>
+                <div class="equipment-grid">
+                    <div class="equip-slot"><span class="equip-emoji">🗡️</span><span id="weapon">Деревянный меч</span></div>
+                    <div class="equip-slot"><span class="equip-emoji">🛡️</span><span id="armor">Кожаная броня</span></div>
+                    <div class="equip-slot"><span class="equip-emoji">💍</span><span id="ring">Простое кольцо</span></div>
+                </div>
+                <div class="nav-tabs">
+                    <button class="action-btn btn-attack" onclick="attack()"><i class="fas fa-fist-raised"></i> АТАКА</button>
+                    <button class="action-btn btn-heavy" onclick="heavyAttack()"><i class="fas fa-bolt"></i> СИЛЬНЫЙ</button>
+                    <button class="action-btn btn-defend" onclick="defend()"><i class="fas fa-shield-virus"></i> ЗАЩИТА</button>
+                    <button class="action-btn btn-heal" onclick="heal()"><i class="fas fa-heartbeat"></i> ЛЕЧЕНИЕ</button>
+                    <button class="action-btn btn-run" onclick="run()"><i class="fas fa-running"></i> СБЕЖАТЬ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="skinsPanel" class="panel">
+        <div class="game-card"><div style="padding: 1.25rem;">
+            <div class="shop-header"><h3 style="color: #ffd700;"><i class="fas fa-tshirt"></i> МАГАЗИН СКИНОВ</h3><div class="shop-timer" id="skinsTimer">24:00:00</div></div>
+            <div class="skins-grid" id="skinsGrid"></div>
+            <div class="nav-tabs" style="margin-top: 1rem;"><button class="nav-btn" onclick="showPanel('battle')">◀️ НАЗАД В БОЙ</button></div>
+        </div></div>
+    </div>
+
+    <div id="shopPanel" class="panel">
+        <div class="game-card"><div style="padding: 1.25rem;">
+            <div class="shop-header"><h3 style="color: #00aaff;"><i class="fas fa-store"></i> ЛАВКА ТОРГОВЦА</h3><div class="shop-timer" id="shopTimer">24:00:00</div></div>
+            <div class="merchant-card"><div class="merchant-emoji">🧙‍♂️✨</div><div class="merchant-text">"Приветствую, путник! Мой ассортимент обновляется каждые 24 часа."</div></div>
+            <div class="shop-grid" id="shopGrid"></div>
+            <div class="nav-tabs" style="margin-top: 1rem;"><button class="nav-btn" onclick="showPanel('battle')">◀️ НАЗАД В БОЙ</button></div>
+        </div></div>
+    </div>
+
+    <div id="achievementsPanel" class="panel">
+        <div class="game-card"><div style="padding: 1.25rem;">
+            <div class="achievements-header"><h3 style="color: #ffd700"><i class="fas fa-trophy"></i> ДОСТИЖЕНИЯ</h3><div class="achievements-stats" id="achievementsStats"></div></div>
+            <div class="achievements-grid" id="achievementsGrid"></div>
+            <div class="nav-tabs" style="margin-top: 1rem;"><button class="nav-btn" onclick="showPanel('battle')">◀️ НАЗАД В БОЙ</button></div>
+        </div></div>
+    </div>
+
+    <div id="heroPanel" class="panel">
+        <div class="game-card"><div style="padding: 1.25rem;">
+            <div class="profile-header" id="profileHeader"></div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.625rem;">
+                <div class="stat-badge"><i class="fas fa-crown"></i> УРОВЕНЬ: <strong id="statLevel">1</strong></div>
+                <div class="stat-badge"><i class="fas fa-chart-line"></i> ОПЫТ: <span id="statXp">0</span>/<span id="statXpNext">100</span></div>
+                <div class="stat-badge"><i class="fas fa-heart text-danger"></i> HP: <span id="statHp">100</span>/<span id="statMaxHp">100</span></div>
+                <div class="stat-badge"><i class="fas fa-droplet text-info"></i> МАНА: <span id="statMana">50</span>/<span id="statMaxMana">50</span></div>
+                <div class="stat-badge"><i class="fas fa-coins text-warning"></i> ЗОЛОТО: <span id="statGold">100</span></div>
+                <div class="stat-badge"><i class="fas fa-sword"></i> АТАКА: <span id="statAtk">15</span></div>
+                <div class="stat-badge"><i class="fas fa-shield-alt"></i> ЗАЩИТА: <span id="statDef">10</span></div>
+                <div class="stat-badge"><i class="fas fa-dungeon"></i> ЭТАЖ: <span id="statFloor">1</span></div>
+                <div class="stat-badge"><i class="fas fa-trophy"></i> ПОБЕД НАД БОССАМИ: <span id="statBosses">0</span></div>
+            </div>
+            <div class="nav-tabs" style="margin-top: 1rem;"><button class="nav-btn" onclick="showPanel('battle')">◀️ НАЗАД В БОЙ</button></div>
+        </div></div>
+    </div>
+
+    <div class="nav-tabs">
+        <div class="nav-btn active" onclick="showPanel('battle')"><i class="fas fa-shield-alt"></i> БОЙ</div>
+        <div class="nav-btn" onclick="loadSkinsShop()"><i class="fas fa-tshirt"></i> СКИНЫ</div>
+        <div class="nav-btn" onclick="loadShop()"><i class="fas fa-store"></i> МАГАЗИН</div>
+        <div class="nav-btn" onclick="loadAchievements()"><i class="fas fa-trophy"></i> ДОСТИЖЕНИЯ</div>
+        <div class="nav-btn" onclick="showPanel('hero')"><i class="fas fa-user-astronaut"></i> ГЕРОЙ</div>
+    </div>
+</div>
+
+<button class="music-btn" id="musicToggle">🎵 ВКЛЮЧИТЬ МУЗЫКУ</button>
+
+<script>
+    // ==================== ДИАЛОГИ ====================
+    const DIALOGS = {
+        "крыса": [
+            { enemy: "🐀 Пи-пи-пи! Ты не пройдёшь, человек!", player: "⚔️ Убирайся с дороги, грызун!" },
+            { enemy: "🐀 Съешь мой сыр! Ой... Я хотел сказать - сразись со мной!", player: "🗡️ Сыр оставь себе, я за победой пришёл!" },
+            { enemy: "🐀 Крысиный король приказал меня остановить тебя!", player: "✨ Тогда передай королю - его ждёт та же участь!" }
+        ],
+        "волк": [
+            { enemy: "🐺 Аууу! Ты пахнешь страхом!", player: "⚔️ Страх? Я не знаю этого слова!" },
+            { enemy: "🐺 Моя стая сильнее твоих друзей!", player: "🗡️ У меня нет друзей, только меч и цель!" },
+            { enemy: "🐺 Ты посмел войти в мой лес?", player: "✨ Лес теперь мой, волк!" }
+        ],
+        "гоблин": [
+            { enemy: "🧟 Твоё золото будет моим!", player: "⚔️ Попробуй отнять, зелёный урод!" },
+            { enemy: "🧟 Ха-ха! Ты слабак!", player: "🗡️ Посмотрим, кто засмеётся последним!" },
+            { enemy: "🧟 Моя магия разорвёт тебя!", player: "✨ Магия? Я тоже кое-что умею..." }
+        ],
+        "орк": [
+            { enemy: "🗿 Я раздавлю тебя как жука!", player: "⚔️ Попробуй, если сможешь!" },
+            { enemy: "🗿 Моя сила не знает границ!", player: "🗡️ Сила без ума - ничто!" },
+            { enemy: "🗿 Ты пожалеешь, что встретил меня!", player: "✨ Уже жалею... о том, что ты такой слабый!" }
+        ],
+        "паук": [
+            { enemy: "🕷️ Попал в мою паутину!", player: "⚔️ Я перережу все твои нити!" },
+            { enemy: "🕷️ Ты будешь моим ужином!", player: "🗡️ Я слишком жилист для тебя!" },
+            { enemy: "🕷️ Паучий король приказал убить тебя!", player: "✨ Передай королю - его очередь!" }
+        ],
+        "маг": [
+            { enemy: "🧙 Огненный шар! Ай, промахнулся...", player: "⚔️ Учись меткости, волшебник!" },
+            { enemy: "🧙 Твоя душа будет моей!", player: "🗡️ Моя душа принадлежит только мне!" },
+            { enemy: "🧙 Я призываю тёмные силы!", player: "✨ Тёмные силы? Я их уже побеждал!" }
+        ],
+        "огр": [
+            { enemy: "🐉 Я съем тебя на завтрак!", player: "⚔️ Я слишком жёсткий для тебя!" },
+            { enemy: "🐉 Моя сила сокрушит тебя!", player: "🗡️ Попробуй, великан!" },
+            { enemy: "🐉 Ты всего лишь муха для меня!", player: "✨ Но эта муха ужалит больно!" }
+        ]
+    };
+    
+    function getDialogForMonster(monsterName) {
+        const lowerName = monsterName.toLowerCase();
+        if (lowerName.includes("крыс")) return DIALOGS.крыса;
+        if (lowerName.includes("волк")) return DIALOGS.волк;
+        if (lowerName.includes("гоблин")) return DIALOGS.гоблин;
+        if (lowerName.includes("орк")) return DIALOGS.орк;
+        if (lowerName.includes("паук")) return DIALOGS.паук;
+        if (lowerName.includes("маг")) return DIALOGS.маг;
+        if (lowerName.includes("огр")) return DIALOGS.огр;
+        return DIALOGS.волк;
+    }
+    
+    function getAvatarEmoji() {
+        const gender = detectGender(player.name);
+        if (player.currentSkin && ALL_SKINS[player.currentSkin]) return ALL_SKINS[player.currentSkin].emoji;
+        return gender === 'male' ? '⚔️🗡️' : '🗡️✨';
+    }
+    
+    async function showDialog(monsterName, monsterEmoji) {
+        const dialogs = getDialogForMonster(monsterName);
+        const randomDialog = dialogs[Math.floor(Math.random() * dialogs.length)];
+        
+        return new Promise((resolve) => {
+            const dialogDiv = document.createElement('div');
+            dialogDiv.className = 'dialog-overlay';
+            dialogDiv.innerHTML = `
+                <div class="dialog-box">
+                    <div class="dialog-enemy">
+                        <div class="dialog-enemy-emoji">${monsterEmoji}</div>
+                        <div class="dialog-enemy-text">"${randomDialog.enemy}"</div>
+                    </div>
+                    <div class="dialog-player">
+                        <div class="dialog-player-emoji">${getAvatarEmoji()}</div>
+                        <div class="dialog-player-text">"${randomDialog.player}"</div>
+                    </div>
+                    <button class="dialog-btn">⚔️ ПРИНЯТЬ ВЫЗОВ ⚔️</button>
+                </div>
+            `;
+            document.body.appendChild(dialogDiv);
+            dialogDiv.querySelector('.dialog-btn').onclick = () => {
+                dialogDiv.remove();
+                resolve();
+            };
+        });
+    }
+    
+    // ==================== ЧАСТИЦЫ И АНИМАЦИИ ====================
+    function createParticles() {
+        const container = document.getElementById('particleBg');
+        for (let i = 0; i < 120; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            p.style.width = (Math.random() * 6 + 2) + 'px';
+            p.style.height = (Math.random() * 6 + 2) + 'px';
+            p.style.left = Math.random() * 100 + '%';
+            p.style.setProperty('--dir', Math.random() > 0.5 ? 1 : -1);
+            p.style.animationDuration = (Math.random() * 10 + 8) + 's';
+            p.style.animationDelay = Math.random() * 8 + 's';
+            container.appendChild(p);
+        }
+    }
+    createParticles();
+    
+    function screenFlash() {
+        const flash = document.createElement('div');
+        flash.style.position = 'fixed';
+        flash.style.top = 0;
+        flash.style.left = 0;
+        flash.style.width = '100%';
+        flash.style.height = '100%';
+        flash.style.backgroundColor = 'rgba(255,255,255,0.3)';
+        flash.style.pointerEvents = 'none';
+        flash.style.zIndex = '9999';
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 100);
+    }
+    
+    // ЗАГРУЗКА
+    let stepIndex = 0;
+    const loadingSteps = [{ text: "ЗАГРУЗКА МИРА...", progress: 20 }, { text: "АКТИВАЦИЯ МАГИИ...", progress: 40 }, { text: "ПРИЗЫВ ГЕРОЕВ...", progress: 60 }, { text: "ЗАГРУЗКА ДИАЛОГОВ...", progress: 80 }, { text: "ДОБРО ПОЖАЛОВАТЬ, ГЕРОЙ!", progress: 100 }];
+    function updateLoader() {
+        if (stepIndex < loadingSteps.length) {
+            const step = loadingSteps[stepIndex];
+            document.getElementById('loaderText').textContent = step.text;
+            document.getElementById('loaderBar').style.width = step.progress + '%';
+            stepIndex++;
+            setTimeout(updateLoader, 500);
+        } else {
+            setTimeout(() => {
+                document.getElementById('loaderScreen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loaderScreen').style.display = 'none';
+                    document.getElementById('gameContainer').style.opacity = '1';
+                    gsap.fromTo(".game-card", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, stagger: 0.1 });
+                }, 800);
+            }, 500);
+        }
+    }
+    updateLoader();
+    
+    // ТОВАРЫ
+    const WEAPONS = { "Деревянный меч": { atk: 5, price: 100, emoji: "🪵" }, "Стальной меч": { atk: 20, price: 500, emoji: "⚔️" }, "Мифриловый меч": { atk: 45, price: 1800, emoji: "✨" }, "Легендарный меч": { atk: 80, price: 4500, emoji: "👑" }, "Клинок дракона": { atk: 130, price: 10000, emoji: "🐲" }, "Клинок богов": { atk: 200, price: 20000, emoji: "⚡" } };
+    const ARMORS = { "Кожаная броня": { def: 5, price: 150, emoji: "🧥" }, "Стальная броня": { def: 18, price: 550, emoji: "🛡️" }, "Мифриловая броня": { def: 35, price: 1600, emoji: "💎" }, "Драконья броня": { def: 55, price: 3800, emoji: "🐉" }, "Небесная броня": { def: 80, price: 7500, emoji: "✨" }, "Броня богов": { def: 120, price: 16000, emoji: "👑" } };
+    const RINGS = { "Простое кольцо": { atk: 3, price: 100, emoji: "💍" }, "Кольцо силы": { atk: 12, price: 600, emoji: "💪" }, "Кровавое кольцо": { atk: 25, price: 1600, emoji: "❤️" }, "Кольцо дракона": { atk: 45, price: 4000, emoji: "🐲" }, "Кольцо бессмертия": { atk: 70, price: 8000, emoji: "✨" }, "Кольцо богов": { atk: 100, price: 16000, emoji: "⚡" } };
+    const POTIONS = [{ name: "💚 Зелье здоровья", effect: "heal", value: 50, price: 50 }, { name: "💚💚 Большое зелье", effect: "heal", value: 100, price: 120 }, { name: "💙 Зелье маны", effect: "mana", value: 30, price: 60 }, { name: "❤️‍🔥 Эликсир жизни", effect: "heal", value: 250, price: 350 }];
+    
+    const ALL_SKINS = { "Воин света": { emoji: "⚔️✨", gender: "male", price: 100 }, "Тёмный паладин": { emoji: "🗡️🌑", gender: "male", price: 100 }, "Валькирия": { emoji: "🪽⚔️", gender: "female", price: 100 }, "Лесная нимфа": { emoji: "🌿✨", gender: "female", price: 100 }, "Драконий рыцарь": { emoji: "🐲⚔️", gender: "male", price: 200 }, "Королева фениксов": { emoji: "🔥👑", gender: "female", price: 200 } };
+    
+    const MONSTER_TYPES = [
+        { name: "🐀 Крыса-мутант", emoji: "🐀⚔️", hp: 35, dmg: 6, xp: 12, gold: 18 },
+        { name: "🐺 Волк-призрак", emoji: "🐺🌙", hp: 50, dmg: 8, xp: 20, gold: 30 },
+        { name: "🧟 Гоблин-шаман", emoji: "🧟🔮", hp: 65, dmg: 11, xp: 30, gold: 45 },
+        { name: "🗿 Орк-воин", emoji: "🗿⚔️", hp: 80, dmg: 14, xp: 40, gold: 60 },
+        { name: "🕷️ Гигантский паук", emoji: "🕷️🕸️", hp: 70, dmg: 12, xp: 35, gold: 55 },
+        { name: "🧙 Тёмный маг", emoji: "🧙🔮", hp: 55, dmg: 15, xp: 38, gold: 70 },
+        { name: "🐉 Огр-людоед", emoji: "🐉💪", hp: 100, dmg: 20, xp: 55, gold: 90 }
+    ];
+    
+    const BOSSES = { 
+        5: { name: "👑 КОРОЛЬ ГОБЛИНОВ", emoji: "👑🗡️", hp: 450, dmg: 45, xp: 400, gold: 1000, cutscene: "Из глубин подземелья доносится зловещий смех... КОРОЛЬ ГОБЛИНОВ выходит из тени!" },
+        10: { name: "🐲 ДРАКОН ПУСТОШИ", emoji: "🐲🔥", hp: 800, dmg: 75, xp: 750, gold: 2000, cutscene: "Земля дрожит! Небо темнеет! ДРАКОН ПУСТОШИ спускается с гор!" },
+        15: { name: "⚡ ПОВЕЛИТЕЛЬ МОЛНИЙ", emoji: "⚡👑", hp: 1200, dmg: 100, xp: 1200, gold: 3500, cutscene: "Гром гремит! Молнии разрывают небо! ПОВЕЛИТЕЛЬ МОЛНИЙ явился!" },
+        20: { name: "💀 АРХИДЕМОН", emoji: "💀👹", hp: 1800, dmg: 130, xp: 1800, gold: 6000, cutscene: "Врата ада открываются! Из бездны восстаёт АРХИДЕМОН!" }
+    };
+    
+    const ACHIEVEMENTS = {
+        firstBlood: { name: "ПЕРВАЯ КРОВЬ", icon: "🩸", desc: "Одолейте первого врага", req: (s) => s.totalKills >= 1 },
+        level5: { name: "ВОСХОДЯЩАЯ ЗВЕЗДА", icon: "⭐", desc: "Достигните 5 уровня", req: (s) => s.level >= 5 },
+        level10: { name: "МАСТЕР ПУТИ", icon: "💎", desc: "Достигните 10 уровня", req: (s) => s.level >= 10 },
+        bossSlayer: { name: "УБИЙЦА БОССОВ", icon: "🗡️", desc: "Победите первого босса", req: (s) => s.bossKills >= 1 },
+        goldDigger: { name: "ЗОЛОТАЯ ЛИХОРАДКА", icon: "💰", desc: "Накопите 1000 золота", req: (s) => s.maxGold >= 1000 },
+        floor10: { name: "ИССЛЕДОВАТЕЛЬ", icon: "🗺️", desc: "Достигните 10 этажа", req: (s) => s.floor >= 10 },
+        combo5: { name: "КОМБО-МАСТЕР", icon: "🔥", desc: "Сделайте 5 ударов подряд", req: (s) => s.maxCombo >= 5 }
+    };
+    
+    // ==================== ИГРОК ====================
+    let player = {
+        name: localStorage.getItem('playerName') || 'ВОИН', level: parseInt(localStorage.getItem('playerLevel')) || 1,
+        xp: parseInt(localStorage.getItem('playerXp')) || 0, hp: parseInt(localStorage.getItem('playerHp')) || 100,
+        maxHp: parseInt(localStorage.getItem('playerMaxHp')) || 100, mana: parseInt(localStorage.getItem('playerMana')) || 50,
+        maxMana: parseInt(localStorage.getItem('playerMaxMana')) || 50, gold: parseInt(localStorage.getItem('playerGold')) || 100,
+        stars: parseInt(localStorage.getItem('playerStars')) || 0,
+        weapon: localStorage.getItem('playerWeapon') || 'Деревянный меч', armor: localStorage.getItem('playerArmor') || 'Кожаная броня',
+        ring: localStorage.getItem('playerRing') || 'Простое кольцо', floor: parseInt(localStorage.getItem('playerFloor')) || 1,
+        bosses: parseInt(localStorage.getItem('playerBosses')) || 0, totalKills: parseInt(localStorage.getItem('playerKills')) || 0,
+        maxGold: parseInt(localStorage.getItem('playerMaxGold')) || 100, totalDamage: parseInt(localStorage.getItem('playerTotalDamage')) || 0,
+        maxCombo: parseInt(localStorage.getItem('playerMaxCombo')) || 0, totalHeal: parseInt(localStorage.getItem('playerTotalHeal')) || 0,
+        currentSkin: localStorage.getItem('currentSkin'), ownedSkins: JSON.parse(localStorage.getItem('ownedSkins') || '[]')
+    };
+    
+    function detectGender(name) {
+        const femaleEndings = ['а', 'я', 'ия', 'на', 'та', 'ра'];
+        const lowerName = name.toLowerCase();
+        for (let ending of femaleEndings) if (lowerName.endsWith(ending)) return 'female';
+        return 'male';
+    }
+    
+    function isValidName(name) {
+        const invalid = ['стул', 'холодильник', 'микроволновка', 'унитаз', 'камень', 'дерево', 'кекс', 'пицца'];
+        return !invalid.includes(name.toLowerCase()) && name.length >= 2 && name.length <= 20;
+    }
+    
+    function saveGame() {
+        localStorage.setItem('playerLevel', player.level); localStorage.setItem('playerXp', player.xp);
+        localStorage.setItem('playerHp', player.hp); localStorage.setItem('playerMaxHp', player.maxHp);
+        localStorage.setItem('playerMana', player.mana); localStorage.setItem('playerMaxMana', player.maxMana);
+        localStorage.setItem('playerGold', player.gold); localStorage.setItem('playerStars', player.stars);
+        localStorage.setItem('playerWeapon', player.weapon); localStorage.setItem('playerArmor', player.armor);
+        localStorage.setItem('playerRing', player.ring); localStorage.setItem('playerFloor', player.floor);
+        localStorage.setItem('playerBosses', player.bosses); localStorage.setItem('playerKills', player.totalKills);
+        localStorage.setItem('playerMaxGold', player.maxGold); localStorage.setItem('playerTotalDamage', player.totalDamage);
+        localStorage.setItem('playerMaxCombo', player.maxCombo); localStorage.setItem('playerTotalHeal', player.totalHeal);
+        localStorage.setItem('currentSkin', player.currentSkin || ''); localStorage.setItem('ownedSkins', JSON.stringify(player.ownedSkins));
+    }
+    
+    function getPlayerAtk() { return 10 + (WEAPONS[player.weapon]?.atk || 5) + (RINGS[player.ring]?.atk || 3); }
+    function getPlayerDef() { return 5 + (ARMORS[player.armor]?.def || 5); }
+    
+    function showNotification(msg, isError) {
+        const div = document.createElement('div'); div.className = 'toast';
+        div.innerHTML = `<i class="fas ${isError ? 'fa-skull' : 'fa-crown'}"></i> ${msg}`;
+        div.style.color = isError ? '#ff6666' : '#00aaff';
+        document.body.appendChild(div);
+        setTimeout(() => div.remove(), 2500);
+    }
+    
+    function showCenterDamage(damage, isCrit) {
+        const div = document.createElement('div');
+        div.className = isCrit ? 'center-crit' : 'center-damage';
+        div.innerHTML = isCrit ? `💥 КРИТ! ${damage}! 💥` : `${damage}!`;
+        document.body.appendChild(div);
+        setTimeout(() => div.remove(), 800);
+    }
+    
+    let currentEnemy = null, defendMode = false, combo = 0, comboTimeout = null;
+    
+    function getRandomMonster(floor) {
+        const m = { ...MONSTER_TYPES[(floor + Math.floor(Math.random() * MONSTER_TYPES.length)) % MONSTER_TYPES.length] };
+        const bonus = floor * 3;
+        m.hp += bonus; m.dmg += Math.floor(bonus / 5); m.xp += floor; m.gold += floor;
+        return m;
+    }
+    
+    function generateEnemy() {
+        if (player.floor % 5 === 0 && BOSSES[player.floor]) return { ...BOSSES[player.floor], isBoss: true };
+        return { ...getRandomMonster(player.floor), isBoss: false };
+    }
+    
+    function showDeathScreen() {
+        const deathDiv = document.createElement('div');
+        deathDiv.className = 'death-screen';
+        deathDiv.innerHTML = `<div class="death-text">💀 ВЫ ПОГИБЛИ 💀</div><div class="death-subtext">Ваше приключение прервалось...</div><button class="death-btn" onclick="revive()">⚔️ ВОЗРОДИТЬСЯ ⚔️</button>`;
+        document.body.appendChild(deathDiv);
+    }
+    
+    function revive() {
+        player.hp = player.maxHp;
+        player.mana = player.maxMana;
+        saveGame();
+        updateUI();
+        document.querySelector('.death-screen')?.remove();
+        showNotification('✅ ВЫ ВОСКРЕСЛИ! Жизни восстановлены!');
+    }
+    
+    async function showBossCutscene(boss) {
+        return new Promise((resolve) => {
+            const cutscene = document.createElement('div');
+            cutscene.className = 'cutscene-overlay';
+            cutscene.innerHTML = `<div class="cutscene-content"><div class="cutscene-boss-emoji">${boss.emoji}</div><div class="cutscene-boss-name">${boss.name}</div><div style="margin:1rem 0; font-size:1rem;">${boss.cutscene}</div><div class="cutscene-subtitle">⚔️ ПРИГОТОВЬСЯ К ЭПИЧЕСКОЙ БИТВЕ! ⚔️</div></div>`;
+            document.body.appendChild(cutscene);
+            setTimeout(() => { cutscene.remove(); resolve(); }, 3000);
+        });
+    }
+    
+    function updateUI() {
+        document.getElementById('level').innerText = player.level; document.getElementById('gold').innerText = player.gold;
+        document.getElementById('floor').innerText = player.floor; document.getElementById('stars').innerText = player.stars;
+        document.getElementById('playerHp').innerText = player.hp; document.getElementById('playerMana').innerText = player.mana;
+        document.getElementById('playerAtk').innerText = getPlayerAtk(); document.getElementById('playerDef').innerText = getPlayerDef();
+        document.getElementById('weapon').innerText = player.weapon; document.getElementById('armor').innerText = player.armor;
+        document.getElementById('ring').innerText = player.ring;
+        document.getElementById('statLevel').innerText = player.level; document.getElementById('statXp').innerText = player.xp;
+        document.getElementById('statXpNext').innerText = player.level * 100; document.getElementById('statHp').innerText = player.hp;
+        document.getElementById('statMaxHp').innerText = player.maxHp; document.getElementById('statMana').innerText = player.mana;
+        document.getElementById('statMaxMana').innerText = player.maxMana; document.getElementById('statGold').innerText = player.gold;
+        document.getElementById('statAtk').innerText = getPlayerAtk(); document.getElementById('statDef').innerText = getPlayerDef();
+        document.getElementById('statFloor').innerText = player.floor; document.getElementById('statBosses').innerText = player.bosses;
+        if (currentEnemy) {
+            let percent = (currentEnemy.hp / currentEnemy.maxHp) * 100;
+            document.getElementById('enemyHpBar').style.width = percent + '%';
+            document.getElementById('enemyHpBar').innerHTML = `${Math.round(percent)}%`;
+            document.getElementById('enemyHpDetail').innerHTML = `❤️ HP: ${currentEnemy.hp}/${currentEnemy.maxHp}`;
+            document.getElementById('enemyName').innerHTML = currentEnemy.name;
+            document.getElementById('enemyEmoji').innerHTML = currentEnemy.emoji;
+        }
+        const avatarDisplay = document.getElementById('avatarDisplay');
+        if (avatarDisplay) avatarDisplay.innerHTML = getAvatarEmoji();
+    }
+    
+    function levelUp() {
+        while (player.xp >= player.level * 100) {
+            player.xp -= player.level * 100;
+            player.level++;
+            player.maxHp += 35;
+            player.hp = player.maxHp;
+            player.maxMana += 25;
+            player.mana = player.maxMana;
+            updateUI();
+            showNotification(`🎉 ПОВЫШЕНИЕ УРОВНЯ ${player.level}! +35 HP, +25 MANA! 🎉`);
+            loadAchievements();
+        }
+        saveGame();
+    }
+    
+    function startNewBattle() {
+        currentEnemy = generateEnemy();
+        defendMode = false;
+        updateUI();
+        combo = 0;
+        if (comboTimeout) clearTimeout(comboTimeout);
+    }
+    
+    async function startBattleWithDialog() {
+        if (currentEnemy && !currentEnemy.isBoss) {
+            await showDialog(currentEnemy.name, currentEnemy.emoji);
+        }
+        showNotification(`⚔️ ПОЯВИЛСЯ ${currentEnemy.name}! ⚔️`);
+        gsap.fromTo(".enemy-card", { scale: 0.8, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4 });
+    }
+    
+    function applyDamage(damage, isCrit) {
+        screenFlash();
+        let finalDamage = Math.max(1, damage - Math.floor(getPlayerDef() / 4));
+        if (isCrit) finalDamage = Math.floor(finalDamage * 1.6);
+        currentEnemy.hp -= finalDamage;
+        player.totalDamage += finalDamage;
+        showCenterDamage(finalDamage, isCrit);
+        document.querySelector('.enemy-card')?.classList.add('enemy-hit');
+        setTimeout(() => document.querySelector('.enemy-card')?.classList.remove('enemy-hit'), 200);
+        
+        if (currentEnemy.hp <= 0) {
+            document.querySelector('.enemy-emoji')?.classList.add('enemy-death-animation');
+            player.gold += currentEnemy.gold;
+            player.xp += currentEnemy.xp;
+            player.totalKills++;
+            if (player.gold > player.maxGold) player.maxGold = player.gold;
+            if (currentEnemy.isBoss) { player.floor++; player.bosses++; showNotification(`🎉 БОСС ПОВЕРЖЕН! ПЕРЕХОД НА ${player.floor} ЭТАЖ! 🎉`); gsap.to(".enemy-card", { scale: 1.15, rotation: 5, duration: 0.2, yoyo: true, repeat: 3 }); }
+            else showNotification(`🎉 ПОБЕДА! +${currentEnemy.gold}💰 +${currentEnemy.xp}✨`);
+            levelUp();
+            startNewBattle();
+            startBattleWithDialog();
+            updateUI();
+            saveGame();
+            loadAchievements();
+            return true;
+        }
+        return false;
+    }
+    
+    function enemyAttack() {
+        let damage = currentEnemy.dmg;
+        if (defendMode) { damage = Math.floor(damage / 2); defendMode = false; showNotification(`🛡️ ЗАЩИТА СНИЗИЛА УРОН!`); }
+        let finalDamage = Math.max(1, damage - Math.floor(getPlayerDef() / 6));
+        player.hp -= finalDamage;
+        showCenterDamage(finalDamage, false);
+        document.querySelector('.player-stats-grid')?.classList.add('enemy-hit');
+        setTimeout(() => document.querySelector('.player-stats-grid')?.classList.remove('enemy-hit'), 200);
+        if (player.hp <= 0) { showDeathScreen(); return true; }
+        showNotification(`🩸 ${currentEnemy.name} АТАКУЕТ! -${finalDamage} HP!`);
+        return false;
+    }
+    
+    function showCombo() { if (combo >= 2) { const div = document.createElement('div'); div.className = 'combo-counter'; div.innerHTML = `${combo}x COMBO! ✨`; document.body.appendChild(div); setTimeout(() => div.remove(), 500); } }
+    
+    async function attack() {
+        if (!currentEnemy) { startNewBattle(); await startBattleWithDialog(); }
+        if (currentEnemy.isBoss && currentEnemy.hp === currentEnemy.maxHp) await showBossCutscene(currentEnemy);
+        let damage = Math.floor(Math.random() * getPlayerAtk()) + Math.floor(getPlayerAtk() / 2);
+        let isCrit = Math.random() < 0.15;
+        let died = applyDamage(damage, isCrit);
+        if (!died) { let pDied = enemyAttack(); if (pDied) return; }
+        updateUI(); saveGame(); combo++;
+        if (combo > player.maxCombo) { player.maxCombo = combo; saveGame(); loadAchievements(); }
+        showCombo(); if (comboTimeout) clearTimeout(comboTimeout);
+        comboTimeout = setTimeout(() => { combo = 0; }, 3000);
+    }
+    
+    async function heavyAttack() { 
+        if (!currentEnemy) { startNewBattle(); await startBattleWithDialog(); } 
+        if (currentEnemy.isBoss && currentEnemy.hp === currentEnemy.maxHp) await showBossCutscene(currentEnemy); 
+        if (player.mana >= 35) { 
+            let damage = Math.floor(Math.random() * getPlayerAtk() * 1.9) + getPlayerAtk(); 
+            player.mana -= 35; 
+            let isCrit = Math.random() < 0.3; 
+            let died = applyDamage(damage, isCrit); 
+            showNotification(`💥 СИЛЬНЫЙ УДАР! ${damage} УРОНА!`); 
+            if (!died) { let pDied = enemyAttack(); if (pDied) return; } 
+            updateUI(); 
+        } else showNotification(`❌ НЕДОСТАТОЧНО МАНЫ! НУЖНО 35!`, true); 
+        saveGame(); 
+    }
+    
+    function defend() { 
+        if (!currentEnemy) { startNewBattle(); startBattleWithDialog(); } 
+        if (player.mana >= 20) { 
+            defendMode = true; 
+            player.mana -= 20; 
+            updateUI(); 
+            showNotification(`🛡️ АКТИВИРОВАНА ЗАЩИТА!`); 
+            let pDied = enemyAttack(); 
+            if (pDied) return; 
+        } else showNotification(`❌ НЕДОСТАТОЧНО МАНЫ! НУЖНО 20!`, true); 
+        saveGame(); 
+    }
+    
+    function heal() { 
+        if (!currentEnemy) { startNewBattle(); startBattleWithDialog(); } 
+        if (player.mana >= 40) { 
+            let healAmount = Math.floor(Math.random() * 60) + 45; 
+            player.hp = Math.min(player.hp + healAmount, player.maxHp); 
+            player.mana -= 40; 
+            player.totalHeal += healAmount; 
+            updateUI(); 
+            showNotification(`💚 ВОССТАНОВЛЕНО ${healAmount} HP!`); 
+            let pDied = enemyAttack(); 
+            if (pDied) return; 
+            saveGame(); 
+            loadAchievements(); 
+        } else showNotification(`❌ НЕДОСТАТОЧНО МАНЫ! НУЖНО 40!`, true); 
+        saveGame(); 
+    }
+    
+    function run() { 
+        if (!currentEnemy) { startNewBattle(); startBattleWithDialog(); } 
+        if (Math.random() < 0.5) { 
+            showNotification(`🏃 ВЫ СБЕЖАЛИ! НОВЫЙ ПРОТИВНИК...`); 
+            startNewBattle(); 
+            startBattleWithDialog(); 
+            updateUI(); 
+        } else { 
+            showNotification(`😰 НЕ УДАЛОСЬ СБЕЖАТЬ!`, true); 
+            let pDied = enemyAttack(); 
+            if (pDied) return; 
+        } 
+        saveGame(); 
+    }
+    
+    // МАГАЗИН ПРЕДМЕТОВ
+    let shopItems = [], lastShopUpdate = 0;
+    function updateShopTimer() { const now = Date.now(); const diff = ((Math.floor(now / 86400000) + 1) * 86400000) - now; const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000); const t = document.getElementById('shopTimer'); if (t) t.textContent = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`; }
+    function updateShop() { const today = Math.floor(Date.now() / 86400000); if (lastShopUpdate !== today) { lastShopUpdate = today; shopItems = []; const wN = Object.keys(WEAPONS), aN = Object.keys(ARMORS), rN = Object.keys(RINGS); for (let i = 0; i < Math.min(4, wN.length); i++) shopItems.push({ type: "weapon", name: wN[i], ...WEAPONS[wN[i]] }); for (let i = 0; i < Math.min(3, aN.length); i++) shopItems.push({ type: "armor", name: aN[i], ...ARMORS[aN[i]] }); for (let i = 0; i < Math.min(3, rN.length); i++) shopItems.push({ type: "ring", name: rN[i], ...RINGS[rN[i]] }); for (let i = 0; i < Math.min(3, POTIONS.length); i++) shopItems.push({ type: "potion", ...POTIONS[i] }); showNotification(`🔄 МАГАЗИН ОБНОВЛЁН!`); } }
+    function loadShop() { updateShop(); if (window.shopInterval) clearInterval(window.shopInterval); window.shopInterval = setInterval(updateShopTimer, 1000); updateShopTimer(); showPanel('shop'); const g = document.getElementById('shopGrid'); g.innerHTML = ''; for (const i of shopItems) { const d = document.createElement('div'); d.className = 'shop-item'; d.onclick = () => buyItem(i); d.innerHTML = `<div class="shop-item-emoji">${i.emoji||'📦'}</div><div class="shop-item-name">${i.name}</div><div class="shop-item-price">💰 ${i.price}</div>`; g.appendChild(d); } }
+    function buyItem(i) { if (player.gold >= i.price) { player.gold -= i.price; if (i.type === 'weapon') { player.weapon = i.name; showNotification(`✅ КУПЛЕНО ${i.name}! +${i.atk} АТАКИ!`); } else if (i.type === 'armor') { player.armor = i.name; showNotification(`✅ КУПЛЕНО ${i.name}! +${i.def} ЗАЩИТЫ!`); } else if (i.type === 'ring') { player.ring = i.name; showNotification(`✅ КУПЛЕНО ${i.name}! +${i.atk} АТАКИ!`); } else if (i.type === 'potion') { if (i.effect === 'heal') { player.hp = Math.min(player.hp + i.value, player.maxHp); showNotification(`💚 ВОССТАНОВЛЕНО ${i.value} HP!`); } else if (i.effect === 'mana') { player.mana = Math.min(player.mana + i.value, player.maxMana); showNotification(`💙 ВОССТАНОВЛЕНО ${i.value} МАНЫ!`); } } updateUI(); saveGame(); loadShop(); } else showNotification(`❌ НЕДОСТАТОЧНО ЗОЛОТА!`, true); }
+    
+    // СКИНЫ
+    let skinsItems = [], lastSkinsUpdate = 0;
+    function updateSkinsTimer() { const now = Date.now(); const diff = ((Math.floor(now / 86400000) + 1) * 86400000) - now; const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000); const t = document.getElementById('skinsTimer'); if (t) t.textContent = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`; }
+    function updateSkinsShop() { const today = Math.floor(Date.now() / 86400000); if (lastSkinsUpdate !== today) { lastSkinsUpdate = today; skinsItems = []; const sN = Object.keys(ALL_SKINS); for (let i = 0; i < Math.min(6, sN.length); i++) skinsItems.push({ name: sN[i], ...ALL_SKINS[sN[i]] }); } }
+    function loadSkinsShop() { updateSkinsShop(); if (window.skinsInterval) clearInterval(window.skinsInterval); window.skinsInterval = setInterval(updateSkinsTimer, 1000); updateSkinsTimer(); showPanel('skins'); const g = document.getElementById('skinsGrid'); g.innerHTML = ''; for (const s of skinsItems) { const isOwned = player.ownedSkins.includes(s.name); const isCurrent = player.currentSkin === s.name; const d = document.createElement('div'); d.className = 'skin-item'; d.onclick = () => buySkin(s); d.innerHTML = `<div class="skin-avatar">${s.emoji}</div><div class="skin-name">${s.name}</div><div class="skin-price"><i class="fas fa-star stars-icon"></i> ${s.price} ⭐</div>${isOwned ? `<div class="owned-badge"><i class="fas fa-check-circle"></i> ${isCurrent ? 'НАДЕТО' : 'В СОБРАНИИ'}</div>` : ''}`; if (!isOwned) d.style.borderColor = '#ffd700'; else if (isCurrent) d.style.background = 'linear-gradient(135deg, #2a2a5a, #3a3a7a)'; g.appendChild(d); } }
+    function buySkin(s) { if (player.ownedSkins.includes(s.name)) { if (player.currentSkin !== s.name) { player.currentSkin = s.name; saveGame(); loadSkinsShop(); showNotification(`✅ СКИН "${s.name}" НАДЕТ!`); updateUI(); } else showNotification(`❌ УЖЕ ИСПОЛЬЗУЕТСЯ!`); return; } if (player.stars >= s.price) { player.stars -= s.price; player.ownedSkins.push(s.name); player.currentSkin = s.name; saveGame(); loadSkinsShop(); updateUI(); showNotification(`🎉 ВЫ КУПИЛИ СКИН "${s.name}"! 🎉`); } else showNotification(`❌ НЕДОСТАТОЧНО ЗВЁЗД! НУЖНО ${s.price} ⭐`, true); }
+    
+    // ДОСТИЖЕНИЯ
+    function loadAchievements() {
+        showPanel('achievements');
+        const stats = { level: player.level, totalKills: player.totalKills, bossKills: player.bosses, maxGold: player.maxGold, floor: player.floor, maxCombo: player.maxCombo };
+        let unlocked = 0;
+        for (let a in ACHIEVEMENTS) if (ACHIEVEMENTS[a].req(stats)) unlocked++;
+        document.getElementById('achievementsStats').innerHTML = `<i class="fas fa-trophy"></i> ПОЛУЧЕНО: ${unlocked}/${Object.keys(ACHIEVEMENTS).length}`;
+        const grid = document.getElementById('achievementsGrid'); grid.innerHTML = '';
+        for (let [key, ach] of Object.entries(ACHIEVEMENTS)) {
+            const isUnlocked = ach.req(stats);
+            const div = document.createElement('div'); div.className = `achievement-card ${isUnlocked ? 'unlocked' : ''}`;
+            div.innerHTML = `<div class="achievement-icon">${ach.icon}</div><div class="achievement-name">${ach.name}</div><div class="achievement-desc">${ach.desc}</div>`;
+            div.onclick = () => showNotification(`🏆 ${ach.name}: ${ach.desc}`, false);
+            grid.appendChild(div);
+        }
+    }
+    
+    function showPanel(panel) {
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        let btns = document.querySelectorAll('.nav-tabs:last-child .nav-btn');
+        if (panel === 'battle') { document.getElementById('battlePanel').classList.add('active'); if (btns[0]) btns[0].classList.add('active'); }
+        else if (panel === 'skins') { document.getElementById('skinsPanel').classList.add('active'); if (btns[1]) btns[1].classList.add('active'); }
+        else if (panel === 'shop') { document.getElementById('shopPanel').classList.add('active'); if (btns[2]) btns[2].classList.add('active'); }
+        else if (panel === 'achievements') { document.getElementById('achievementsPanel').classList.add('active'); if (btns[3]) btns[3].classList.add('active'); }
+        else if (panel === 'hero') { document.getElementById('heroPanel').classList.add('active'); if (btns[4]) btns[4].classList.add('active'); updateProfileHeader(); }
+    }
+    
+    function updateProfileHeader() {
+        const header = document.getElementById('profileHeader');
+        header.innerHTML = `<div class="avatar" id="avatarDisplay">${getAvatarEmoji()}</div><div class="player-info"><div class="player-name-display">${player.name}</div><input type="text" id="playerNameInput" class="player-name-input" value="${player.name}" placeholder="Введите имя"><div id="nameError" class="error-message"></div><div class="stat-badge" style="margin-top:0.5rem;"><i class="fas fa-star"></i> ⭐ ЗВЁЗДЫ: ${player.stars}</div></div>`;
+        const nameInput = document.getElementById('playerNameInput');
+        if (nameInput) nameInput.onchange = function() { const newName = this.value.trim(); if (!isValidName(newName)) { document.getElementById('nameError').innerHTML = '❌ Введите реальное имя!'; this.value = player.name; setTimeout(() => document.getElementById('nameError').innerHTML = '', 3000); return; } player.name = newName; localStorage.setItem('playerName', player.name); updateProfileHeader(); updateUI(); showNotification(`✅ Имя изменено на ${player.name}!`); };
+    }
+    
+    // МУЗЫКА
+    let audio = null, isPlaying = false, currentTrack = 0;
+    const musicList = ['1.mp3', '2.mp3', '3.mp3', '4.mp3', '5.mp3', '6.mp3', '7.mp3'];
+    function nextTrack() { currentTrack = (currentTrack + 1) % musicList.length; if (isPlaying && audio) { audio.src = musicList[currentTrack]; audio.play().catch(e => {}); document.getElementById('musicToggle').innerHTML = `🎵 ТРЕК ${currentTrack+1}/7 🎵`; } }
+    function toggleMusic() { if (!audio) { audio = new Audio(); audio.volume = 0.3; audio.addEventListener('ended', nextTrack); } const btn = document.getElementById('musicToggle'); if (isPlaying) { audio.pause(); isPlaying = false; btn.innerHTML = '🎵 ВКЛЮЧИТЬ МУЗЫКУ'; btn.style.color = '#00aaff'; } else { audio.src = musicList[currentTrack]; audio.play().catch(e => {}); isPlaying = true; btn.innerHTML = `🎵 ТРЕК ${currentTrack+1}/7 🎵`; btn.style.color = '#ffaa00'; } }
+    document.getElementById('musicToggle').onclick = toggleMusic;
+    
+    // ЗАПУСК
+    startNewBattle();
+    startBattleWithDialog();
+    updateUI();
+    saveGame();
+    updateProfileHeader();
+    if (window.Telegram && window.Telegram.WebApp) { window.Telegram.WebApp.ready(); window.Telegram.WebApp.expand(); window.Telegram.WebApp.MainButton.setText("💾 СОХРАНИТЬ ПРОГРЕСС"); window.Telegram.WebApp.MainButton.onClick(() => { saveGame(); showNotification("✅ ПРОГРЕСС СОХРАНЁН!"); }); window.Telegram.WebApp.MainButton.show(); }
+</script>
+</body>
+</html>
